@@ -18,7 +18,7 @@ library(glmnet)
 
 # [1] Data ----
 ## Reading, selecting variables, and making numerical some categorical variables.
-data <- readARFF("BSE/first quarter/datascience/final project 2/dataset_31_credit-g.arff") %>% 
+data <- read.csv("https://raw.githubusercontent.com/jparedes-m/DataScienceBSE/refs/heads/main/data/credit.csv") %>% 
     select(age, personal_status, job, housing, savings_status, checking_status, credit_amount, duration, purpose, credit_history, property_magnitude, housing, existing_credits, num_dependents, foreign_worker, installment_commitment, residence_since, class) %>% 
     separate(personal_status, into = c("sex", "p_status"), sep = " ") %>%
     mutate(class = ifelse(class == "good", 0, 1)) %>% 
