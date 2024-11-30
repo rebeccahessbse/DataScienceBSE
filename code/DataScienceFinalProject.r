@@ -16,9 +16,14 @@ library(randomForest)
 library(xgboost)
 library(glmnet)
 
+jorge <- "C:/Users/jparedesm/Dropbox"
+setwd(jorge)
+rm(jorge)
+
 # [1] Data ----
 ## Reading, selecting variables, and making numerical some categorical variables.
-data <- read.csv("https://raw.githubusercontent.com/jparedes-m/DataScienceBSE/refs/heads/main/data/credit.csv") %>% 
+
+data <- readARFF("BSE/first quarter/datascience/final project 2/dataset_31_credit-g.arff") %>% 
     select(age, personal_status, job, housing, savings_status, checking_status, credit_amount, duration, purpose, credit_history, property_magnitude, housing, existing_credits, num_dependents, foreign_worker, installment_commitment, residence_since, class) %>% 
     separate(personal_status, into = c("sex", "p_status"), sep = " ") %>%
     mutate(class = ifelse(class == "good", 0, 1)) %>% 
@@ -41,12 +46,20 @@ data <- read.csv("https://raw.githubusercontent.com/jparedes-m/DataScienceBSE/re
         checking_status == "0<=X<200" ~ 'moderate',
         checking_status == ">=200" ~ 'rich',
         TRUE ~ NA)) %>% 
+    mutate(repayment_burden = credit_amount/duration) %>%
     rename(savings_account = savings_status, checking_account = checking_status) %>%
     mutate(checking_account = as.factor(checking_account), savings_account = as.factor(savings_account)) %>% 
     relocate(class)
 
 # [2] Missing values / Factors treatment ----
 df <- data
+
+## Missing data treatment 
+sapply(df, \(x) 100*mean(is.na(x)))
+mode_fctr <- function(x) levels(x)[which.max(tabulate(match(x, levels(x))))]
+
+df$savings_account <- ifelse(is.na(df$savings_account), mode_fctr(df$savings_account), df$savings_account)
+df$checking_account <- ifelse(is.na(df$checking_account), mode_fctr(df$checking_account), df$checking_account)
 
 ## Convert everything to numeric (most of them are factors)
 label_encoders <- list()
@@ -57,12 +70,6 @@ for (column in factor_vars) {
   label_encoders[[column]] <- levels(fct_inorder(as.factor(df[[column]])))
 }
 rm(column)
-## Missing data treatment 
-sapply(df, \(x) sum(is.na(x)))
-
-df$savings_account <- ifelse(is.na(df$savings_account), -1, df$savings_account)
-df$checking_account <- ifelse(is.na(df$checking_account), -1, df$checking_account)
-
 # [3] Exploratory data analysis ----
 ## [3.1] Univariate analysis ----
 data_long <- data %>% select(sex, age, credit_amount, duration) %>%
@@ -89,6 +96,8 @@ ggplot(data_long, aes(x = value, fill = sex)) +
         strip.text.x = element_text(face = "bold", color = "black", size = 12),
         legend.position = "bottom")
 
+ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_1_graph.png", width = 9, height = 10, bg = "white")
+
 ## [3.2] Credit amount ----
 data %>% mutate(p_status = ifelse(p_status == "single"| p_status == "div/sep", "Single", "Married")) %>% 
 ggplot(aes(x = credit_amount)) +
@@ -103,7 +112,9 @@ ggplot(aes(x = credit_amount)) +
           axis.title.y = element_text(size = 12),
           axis.title.x = element_text(size = 12),
           axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-    facet_wrap(~ p_status, scales = "free")
+    facet_wrap(~ p_status, scales = "free", nrow = 2)
+
+ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_2_1_graph.png", width = 9, height = 10, bg = "white")
 
 data %>%
   mutate(p_status = ifelse(p_status == "single" | p_status == "div/sep", "Single", "Married")) %>%
@@ -131,6 +142,8 @@ data %>%
     legend.position = "bottom"
   )
 
+ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_2_2_graph.png", width = 9, height = 10, bg = "white")
+
 ggplot(data, aes(x = credit_amount)) +
     geom_histogram(aes(y = after_stat(density)), bins = 30, fill = "dodgerblue3", alpha = 0.7) +
     geom_density(color = "blue", linewidth = 1) +
@@ -143,7 +156,9 @@ ggplot(data, aes(x = credit_amount)) +
           axis.title.y = element_text(size = 12),
           axis.title.x = element_text(size = 12),
           axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-    facet_wrap(~ purpose, scales = "free")
+    facet_wrap(~ purpose, scales = "free", nrow = 2)
+
+ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_2_3_graph.png", width = 15, height = 10, bg = "white")
 
 data %>% mutate(class = ifelse(class == 0, "Good", "Bad")) %>%
 ggplot(aes(x = credit_amount, fill = sex)) +
@@ -166,9 +181,11 @@ ggplot(aes(x = credit_amount, fill = sex)) +
         axis.title.x = element_text(size = 12),
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
         legend.position = "bottom") +
-    facet_wrap(~ class, scales = "free") +
+    facet_wrap(~ class, scales = "free", nrow = 2) +
     scale_fill_manual(values = c("male" = "cornflowerblue", "female" = "firebrick")) +
     scale_color_manual(values = c("male" = "cornflowerblue", "female" = "firebrick"))
+
+ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_2_4_graph.png", width = 9, height = 10, bg = "white")
 
 ## [3.3] Duration ----
 data %>% mutate(p_status = ifelse(p_status == "single"| p_status == "div/sep", "Single", "Married")) %>% 
@@ -184,7 +201,9 @@ ggplot(aes(x = duration)) +
           axis.title.y = element_text(size = 12),
           axis.title.x = element_text(size = 12),
           axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-    facet_wrap(~ p_status, scales = "free")
+    facet_wrap(~ p_status, scales = "free", nrow = 2)
+
+ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_3_1_graph.png", width = 9, height = 10, bg = "white")
 
 data %>%
   mutate(p_status = ifelse(p_status == "single" | p_status == "div/sep", "Single", "Married")) %>%
@@ -212,6 +231,8 @@ data %>%
     legend.position = "bottom"
   )
 
+ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_3_2_graph.png", width = 9, height = 10, bg = "white")
+
 ggplot(data, aes(x = duration)) +
     geom_histogram(aes(y = after_stat(density)), bins = 30, fill = "dodgerblue3", alpha = 0.7) +
     geom_density(color = "blue", linewidth = 1) +
@@ -224,7 +245,9 @@ ggplot(data, aes(x = duration)) +
           axis.title.y = element_text(size = 12),
           axis.title.x = element_text(size = 12),
           axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
-    facet_wrap(~ purpose, scales = "free")
+    facet_wrap(~ purpose, scales = "free", nrow = 2)
+
+ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_3_3_graph.png", width = 15, height = 10, bg = "white")
 
 data %>% mutate(class = ifelse(class == 0, "Good", "Bad")) %>%
 ggplot(aes(x = duration, fill = sex)) +
@@ -247,23 +270,44 @@ ggplot(aes(x = duration, fill = sex)) +
         axis.title.x = element_text(size = 12),
         axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1),
         legend.position = "bottom") +
-    facet_wrap(~ class, scales = "free") +
+    facet_wrap(~ class, scales = "free", nrow = 2) +
     scale_fill_manual(values = c("male" = "cornflowerblue", "female" = "firebrick")) +
     scale_color_manual(values = c("male" = "cornflowerblue", "female" = "firebrick"))
 
+ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_3_4_graph.png", width = 9, height = 10, bg = "white")
+
 ## [3.4] Correlation matrix ----
-pheatmap(cor(df, use = "complete.obs"), 
+map <- pheatmap(cor(df, use = "complete.obs"), 
          display_numbers = TRUE, 
          number_color = "black",
          main = "Feature Correlation Heatmap", treeheight_row = F, treeheight_col = F)
-
+save_pheatmap <- function(x, filename, width=12, height=12){
+  stopifnot(!missing(x))
+  stopifnot(!missing(filename))
+  if(grepl(".png",filename)){
+    png(filename, width=width, height=height, units = "in", res=300)
+    grid::grid.newpage()
+    grid::grid.draw(x$gtable)
+    dev.off()
+  }
+  else if(grepl(".pdf",filename)){
+    pdf(filename, width=width, height=height)
+    grid::grid.newpage()
+    grid::grid.draw(x$gtable)
+    dev.off()
+  }
+  else{
+    print("Filename did not contain '.png' or '.pdf'")
+  }
+}
+save_pheatmap(map, "Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_4_graph.png", width = 10, height = 10)
 # [4] Preprocessing ----
 ## Feature engeenering
 ### Add: squared age, squared credit amount, squared duration, and squared number of dependents
 df <- df %>% mutate(age2 = age^2, credit_amount2 = credit_amount^2, duration2 = duration^2, num_dependents2 = num_dependents^2)
 
 ## Normalization across the numeric variables
-num_vars <- c('duration', 'credit_amount', 'installment_commitment', 'residence_since', 'age', 'existing_credits', 'num_dependents', 'age2', 'credit_amount2', 'duration2', 'num_dependents2')
+num_vars <- c('duration', 'credit_amount', 'installment_commitment', 'residence_since', 'age', 'existing_credits', 'num_dependents', 'age2', 'credit_amount2', 'duration2', 'num_dependents2', 'repayment_burden')
 df <- df %>% mutate(across(all_of(num_vars), scale))
 
 # [5] Models ----
@@ -333,7 +377,7 @@ test_label <- test_y
 
 xgb_control <- trainControl(method = "cv", number = 7, verboseIter = FALSE)
 
-xgb_model <- train(x = train_matrix, y = train_label, method = "xgbTree", trControl = xgb_control, 
+xgb_model <- train(x = train_matrix, y = train_label, method = "xgbTree", trControl = xgb_control, verbosity = 0,
     tuneGrid = expand.grid(nrounds = seq(50, 200, by = 50), max_depth = c(3, 6), eta = c(0.1), gamma = c(0, 0.1), colsample_bytree = 0.8, min_child_weight = c(1,3), subsample = 0.8))
 
 xgb_predictions <- predict(xgb_model, newdata = test_matrix)
@@ -411,5 +455,7 @@ ggplot(accuracy, aes(x = model, y = accuracy)) +
           axis.title.x = element_text(size = 12),
           axis.text.x = element_text(angle = 270, vjust = 0.5, hjust=1)) +
     scale_y_continuous(n.breaks = 20)
+
+ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/accuracy.png", width = 10, height = 10, bg = "white")
 
 # End-of-File ----
