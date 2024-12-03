@@ -1,6 +1,7 @@
 import pandas as pd
-from ucimlrepo import fetch_ucirepo 
-  
+from ucimlrepo import fetch_ucirepo
+import re
+
 # fetch dataset 
 statlog_german_credit_data = fetch_ucirepo(id=144) 
   
@@ -11,20 +12,41 @@ y = statlog_german_credit_data.data.targets
 # Metadata and variables
 metadata = statlog_german_credit_data.metadata
 variables = statlog_german_credit_data.variables
+variables_info = metadata['additional_info']['variable_info']
 
 # Combine `y` with `X`
 df = pd.concat([y, X], axis=1)
-# Rename the target column using metadata
-y_column_name = metadata['target_col'][0]  # Extract the first (and only) target column name
-df.rename(columns={y.name: y_column_name}, inplace=True)
+df.rename(columns={df.columns[0]: 'class'}, inplace=True)
 
-# Map value labels to the target variable, if available
-if y_column_name in variables and 'values' in variables[y_column_name]:
-    value_labels = variables[y_column_name]['values']
-    df[y_column_name] = df[y_column_name].map(value_labels)
+def parse_metadata_info(variable_info):
+    mappings = {}
+    attributes = variable_info.split("Attribute")
+    for attribute in attributes:
+        if not attribute.strip():
+            continue
+        lines = attribute.splitlines()
+        # The first line contains the attribute number and type
+        if len(lines) > 1 and "(qualitative)" in lines[0]:
+            attr_num = lines[0].strip().split(":")[0]
+            column_name = f"Attribute{attr_num}"
+            # Extract mappings from the remaining lines
+            values = {}
+            for line in lines[1:]:
+                line = line.strip()
+                if ":" in line:
+                    code, description = line.split(":", 1)
+                    values[code.strip()] = description.strip()
+            mappings[column_name] = values
+    return mappings
 
-# Rename the columns with the following vector
 
+# Parse metadata for mappings
+attribute_mappings = parse_metadata_info(variables_info)
 
-# Display resulting dataset
+# Apply mappings to the DataFrame
+for col, mapping in attribute_mappings.items():
+    if col in df.columns:  # Ensure the column exists in the DataFrame
+        df[col] = df[col].map(mapping)
+
+# Display the updated DataFrame
 print(df.head())
