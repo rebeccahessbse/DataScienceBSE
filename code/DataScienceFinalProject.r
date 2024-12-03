@@ -91,7 +91,7 @@ ggplot(data_long, aes(x = value, fill = sex)) +
         strip.text.x = element_text(face = "bold", color = "black", size = 12),
         legend.position = "bottom")
 
-ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_1_graph.png", width = 9, height = 10, bg = "white")
+#ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_1_graph.png", width = 9, height = 10, bg = "white")
 
 ## [3.2] Credit amount ----
 data %>% mutate(p_status = ifelse(p_status == "single"| p_status == "div/sep", "Single", "Married")) %>% 
@@ -109,7 +109,7 @@ ggplot(aes(x = credit_amount)) +
           axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
     facet_wrap(~ p_status, scales = "free", nrow = 2)
 
-ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_2_1_graph.png", width = 9, height = 10, bg = "white")
+#ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_2_1_graph.png", width = 9, height = 10, bg = "white")
 
 data %>%
   mutate(p_status = ifelse(p_status == "single" | p_status == "div/sep", "Single", "Married")) %>%
@@ -137,7 +137,7 @@ data %>%
     legend.position = "bottom"
   )
 
-ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_2_2_graph.png", width = 9, height = 10, bg = "white")
+#ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_2_2_graph.png", width = 9, height = 10, bg = "white")
 
 ggplot(data, aes(x = credit_amount)) +
     geom_histogram(aes(y = after_stat(density)), bins = 30, fill = "dodgerblue3", alpha = 0.7) +
@@ -153,7 +153,7 @@ ggplot(data, aes(x = credit_amount)) +
           axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
     facet_wrap(~ purpose, scales = "free", nrow = 2)
 
-ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_2_3_graph.png", width = 15, height = 10, bg = "white")
+#ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_2_3_graph.png", width = 15, height = 10, bg = "white")
 
 data %>% mutate(class = ifelse(class == 0, "Good", "Bad")) %>%
 ggplot(aes(x = credit_amount, fill = sex)) +
@@ -180,7 +180,7 @@ ggplot(aes(x = credit_amount, fill = sex)) +
     scale_fill_manual(values = c("male" = "cornflowerblue", "female" = "firebrick")) +
     scale_color_manual(values = c("male" = "cornflowerblue", "female" = "firebrick"))
 
-ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_2_4_graph.png", width = 9, height = 10, bg = "white")
+#ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_2_4_graph.png", width = 9, height = 10, bg = "white")
 
 ## [3.3] Duration ----
 data %>% mutate(p_status = ifelse(p_status == "single"| p_status == "div/sep", "Single", "Married")) %>% 
@@ -198,7 +198,7 @@ ggplot(aes(x = duration)) +
           axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
     facet_wrap(~ p_status, scales = "free", nrow = 2)
 
-ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_3_1_graph.png", width = 9, height = 10, bg = "white")
+#ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_3_1_graph.png", width = 9, height = 10, bg = "white")
 
 data %>%
   mutate(p_status = ifelse(p_status == "single" | p_status == "div/sep", "Single", "Married")) %>%
@@ -226,7 +226,7 @@ data %>%
     legend.position = "bottom"
   )
 
-ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_3_2_graph.png", width = 9, height = 10, bg = "white")
+#ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_3_2_graph.png", width = 9, height = 10, bg = "white")
 
 ggplot(data, aes(x = duration)) +
     geom_histogram(aes(y = after_stat(density)), bins = 30, fill = "dodgerblue3", alpha = 0.7) +
@@ -242,7 +242,7 @@ ggplot(data, aes(x = duration)) +
           axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) +
     facet_wrap(~ purpose, scales = "free", nrow = 2)
 
-ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_3_3_graph.png", width = 15, height = 10, bg = "white")
+#ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_3_3_graph.png", width = 15, height = 10, bg = "white")
 
 data %>% mutate(class = ifelse(class == 0, "Good", "Bad")) %>%
 ggplot(aes(x = duration, fill = sex)) +
@@ -269,7 +269,7 @@ ggplot(aes(x = duration, fill = sex)) +
     scale_fill_manual(values = c("male" = "cornflowerblue", "female" = "firebrick")) +
     scale_color_manual(values = c("male" = "cornflowerblue", "female" = "firebrick"))
 
-ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_3_4_graph.png", width = 9, height = 10, bg = "white")
+#ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_3_4_graph.png", width = 9, height = 10, bg = "white")
 
 ## [3.4] Correlation matrix ----
 map <- pheatmap(cor(df, use = "complete.obs"), 
@@ -295,7 +295,7 @@ save_pheatmap <- function(x, filename, width=12, height=12){
     print("Filename did not contain '.png' or '.pdf'")
   }
 }
-save_pheatmap(map, "Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_4_graph.png", width = 10, height = 10)
+#save_pheatmap(map, "Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_4_graph.png", width = 10, height = 10)
 # [4] Preprocessing ----
 ## Feature engeenering
 ### Add: squared age, squared credit amount, squared duration, and squared number of dependents
@@ -451,6 +451,6 @@ ggplot(accuracy, aes(x = model, y = accuracy)) +
           axis.text.x = element_text(angle = 270, vjust = 0.5, hjust=1)) +
     scale_y_continuous(n.breaks = 20)
 
-ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/accuracy.png", width = 10, height = 10, bg = "white")
+#ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/accuracy.png", width = 10, height = 10, bg = "white")
 
 # End-of-File ----
