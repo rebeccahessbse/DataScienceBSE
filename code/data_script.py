@@ -48,5 +48,18 @@ for col, mapping in attribute_mappings.items():
     if col in df.columns:  # Ensure the column exists in the DataFrame
         df[col] = df[col].map(mapping)
 
-# Display the updated DataFrame
-print(df.head())
+# Rename all the variables with a vector
+# Vector of new column names
+new_column_names = [
+    "class", "checking_status", "duration", "credit_history", "purpose", 
+    "credit_amount", "savings_status", "employment", "installment_commitment", 
+    "personal_status", "other_parties", "residence_since", "property_magnitude", 
+    "age", "other_payment_plans", "housing", "existing_credits", "job", 
+    "num_dependents", "own_telephone", "foreign_worker"
+]
+
+# Rename the columns
+df.columns = new_column_names
+
+# Save the DataFrame to a CSV file
+df.to_csv("data/german_credit_data.csv", index=False)
