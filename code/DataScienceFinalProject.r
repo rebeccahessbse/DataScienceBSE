@@ -14,6 +14,7 @@ library(caret)
 library(randomForest)
 library(xgboost)
 library(glmnet)
+library(pROC)
 
 # [1] Data ----
 ## Reading, selecting variables, and making numerical some categorical variables.
@@ -326,6 +327,7 @@ best_k <- knn_model$bestTune$k
 knn_predictions <- knn(train = train_x, test = test_x, cl = train_y, k = best_k)
 conf_matrix_knn <- confusionMatrix(knn_predictions, test_y)
 
+roc_knn <- roc(test_y, as.numeric(knn_predictions))
 ## [5.2] Random Forest ----
 ntree_grid  <- 100*c(1:5)
 mtry_grid <- c(2, 3, floor(sqrt(ncol(train_data) -1)), 5)
@@ -364,6 +366,9 @@ rf_model <- randomForest(class ~ .,  data = train_data, ntree = best_result$ntre
 rf_predictions <- predict(rf_model, newdata = test_x)
 conf_matrix_rf <- confusionMatrix(rf_predictions, test_y)
 
+# compute the ROC of this model
+roc_rf <- roc(as.numeric(as.character(test_y)), as.numeric(as.character(rf_predictions)))
+
 ## [5.3] XGBoost ----
 train_matrix <- model.matrix(class ~ ., data = train_data)[, -1]
 test_matrix <- model.matrix(~ ., data = test_x)[, -1]
@@ -378,6 +383,9 @@ xgb_model <- train(x = train_matrix, y = train_label, method = "xgbTree", trCont
 xgb_predictions <- predict(xgb_model, newdata = test_matrix)
 conf_matrix_xgb <- confusionMatrix(xgb_predictions, test_label)
 
+# compute the ROC of this model
+roc_xgb <- roc(as.numeric(as.character(test_label)), as.numeric(as.character(xgb_predictions)))
+
 ## [5.4] Elastic net with logit ----
 train_matrix <- model.matrix(class ~ ., data = train_data)[, -1]
 test_matrix <- model.matrix(~ ., data = test_x)[, -1]
@@ -387,42 +395,57 @@ test_label <- as.numeric(as.character(test_y))
 
 # Cross-validation to find the best alpha
 models <- list()
-results <- data.frame(alpha = numeric(), lambda = numeric(), accuracy = numeric())
-for(i in 0:50){
-    name <- paste0("alpha", i/50)
-    model <- cv.glmnet(x = train_matrix, y = train_label, family = "binomial", alpha = i/50, lambda = NULL)
+results <- data.frame(alpha = numeric(), lambda = numeric(), auc = numeric())
+for (i in 0:50) {
+    name <- paste0("alpha", i / 50)
+    model <- cv.glmnet(x = train_matrix, y = train_label, family = "binomial", alpha = i / 50, lambda = NULL)
     models[[name]] <- model
-    # Make predictions on the test set
-    predictions <- predict(model, newx = test_matrix, s = "lambda.min", type = "class")
-     # Evaluate accuracy
-    conf_matrix <- confusionMatrix(as.factor(predictions), as.factor(test_label))
-    accuracy <- conf_matrix$overall["Accuracy"]
     
-    # Save results
-    results <- rbind(results, data.frame(alpha = i/50, lambda = model$lambda.min, accuracy = accuracy))
+    # Predicciones como probabilidades
+    probabilities <- predict(model, newx = test_matrix, s = "lambda.min", type = "response")
+    
+    # Calcular AUC
+    auc <- suppressMessages(auc(test_label, probabilities))
+    
+    # Guardar resultados
+    results <- rbind(results, data.frame(alpha = i / 50, lambda = model$lambda.min, auc = auc))
 }
-results <- results %>% filter(alpha != 0 & alpha != 1) %>% arrange(desc(accuracy))
-# pick the best alpha
+
+# Seleccionar el mejor α basado en AUC
+results <- results %>% filter(alpha != 0 & alpha != 1) %>% arrange(desc(auc))
 alpha <- results[1, "alpha"]
 
 # Ridge
 ridge_model <- cv.glmnet(x = train_matrix, y = train_label, family = "binomial", alpha = 0, lambda = NULL)
 ridge_predictions <- predict(ridge_model, newx = test_matrix, s = "lambda.min", type = "class")
 conf_matrix_ridge <- confusionMatrix(as.factor(ridge_predictions), as.factor(test_label))
+roc_ridge <- roc(as.numeric(as.character(test_label)), as.numeric(as.character(ridge_predictions)))
 
 # Elastic net
 elastic_net_model <- cv.glmnet(x = train_matrix, y = train_label, family = "binomial", alpha = alpha, lambda = NULL)
 elastic_net_predictions <- predict(elastic_net_model, newx = test_matrix, s = "lambda.min", type = "class")
 conf_matrix_elastic <- confusionMatrix(as.factor(elastic_net_predictions), as.factor(test_label))
+roc_elastic <- roc(as.numeric(as.character(test_label)), as.numeric(as.character(elastic_net_predictions)))
 
 # Lasso
 lasso_model <- cv.glmnet(x = train_matrix, y = train_label, family = "binomial", alpha = 1, lambda = NULL)
 lasso_predictions <- predict(lasso_model, newx = test_matrix, s = "lambda.min", type = "class")
 conf_matrix_lasso <- confusionMatrix(as.factor(lasso_predictions), as.factor(test_label))
+roc_lasso <- roc(as.numeric(as.character(test_label)), as.numeric(as.character(lasso_predictions)))
+
+# Logit without penalization
+logit_model <- glm(class ~ ., data = train_data, family = "binomial")
+logit_probabilities <- predict(logit_model, newdata = test_x, type = "response")
+logit_predictions <- ifelse(logit_probabilities > 0.5, 1, 0)
+logit_predictions <- factor(logit_predictions, levels = c(0, 1))
+test_label <- factor(test_label, levels = c(0, 1))
+conf_matrix_logit <- confusionMatrix(logit_predictions, test_label)
+roc_logit <- roc(test_label, logit_probabilities)
+
 
 # [6] Results ----
 ### Get all the confusion matrices in a list for comparison
-confusion_matrices <- list(knn = conf_matrix_knn, rf = conf_matrix_rf, xgb = conf_matrix_xgb, ridge = conf_matrix_ridge, elastic_net = conf_matrix_elastic, lasso = conf_matrix_lasso)
+confusion_matrices <- list(knn = conf_matrix_knn, rf = conf_matrix_rf, xgb = conf_matrix_xgb, ridge = conf_matrix_ridge, elastic_net = conf_matrix_elastic, lasso = conf_matrix_lasso, logit = conf_matrix_logit)
 
 ## Get the accuracy, and the CI into a dataframe
 accuracy <- data.frame(model = names(confusion_matrices), 
@@ -435,8 +458,9 @@ accuracy  <- accuracy %>% mutate(model = case_when(model == "knn" ~ "K-Nearest-N
                                                    model == "xgb" ~ "XGBoost",
                                                    model == "ridge" ~ "Ridge",
                                                    model == "elastic_net" ~ "Elastic Net",
-                                                   model == "lasso" ~ "Lasso")) %>% 
-            mutate(model = fct_relevel(model, "Lasso", "Elastic Net", "Ridge", "XGBoost", "Random Forest", "K-Nearest-Neighbors"))
+                                                   model == "lasso" ~ "Lasso", 
+                                                   model == 'logit' ~ "Logit")) %>% 
+            mutate(model = fct_relevel(model, "Logit", "Lasso", "Elastic Net", "Ridge", "XGBoost", "Random Forest", "K-Nearest-Neighbors"))
 
 # plot this results in a geom_point plot with error bars
 ggplot(accuracy, aes(x = model, y = accuracy)) +
@@ -453,4 +477,24 @@ ggplot(accuracy, aes(x = model, y = accuracy)) +
 
 #ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/accuracy.png", width = 10, height = 10, bg = "white")
 
+# Plot all the roc curves with the AUC in the legend with the plot function
+plot(roc_knn, col = "red", lwd = 2, type = "l", main = "ROC Curves", xlab = "False Positive Rate", ylab = "True Positive Rate")
+lines(roc_rf, col = "blue", lwd = 2)
+lines(roc_xgb, col = "green", lwd = 2)
+lines(roc_ridge, col = "purple", lwd = 2)
+lines(roc_elastic, col = "orange", lwd = 2)
+lines(roc_lasso, col = "black", lwd = 2)
+lines(roc_logit, col = "brown", lwd = 2)
+legend("bottomright", 
+       legend = c(
+         paste0("K-Nearest-Neighbors (AUC = ", round(auc(roc_knn), 3), ")"),
+         paste0("Random Forest (AUC = ", round(auc(roc_rf), 3), ")"),
+         paste0("XGBoost (AUC = ", round(auc(roc_xgb), 3), ")"),
+         paste0("Ridge (AUC = ", round(auc(roc_ridge), 3), ")"),
+         paste0("Elastic Net (AUC = ", round(auc(roc_elastic), 3), ")"),
+         paste0("Lasso (AUC = ", round(auc(roc_lasso), 3), ")"),
+          paste0("Logit (AUC = ", round(auc(roc_logit), 3), ")")
+       ),
+       col = c("red", "blue", "green", "purple", "orange", "black", "brown"), 
+       lwd = 2)
 # End-of-File ----
