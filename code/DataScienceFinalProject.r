@@ -432,6 +432,19 @@ alpha <- results[1, "alpha"]
 
 # Ridge
 ridge_model <- cv.glmnet(x = train_matrix, y = train_label, family = "binomial", alpha = 0, lambda = NULL)
+#png("/Users/rebeccahess/Documents/BSE Sem 1/datascience/ridge_graph.png", width = 800, height = 600) 
+plot(ridge_model)
+title("Ridge Coefficient Shrinkage Plot\n")
+dev.off()   
+
+# Print the coefficients for the Ridge model at lambda.1se
+ridge_coefs_1se <- coef(ridge_model, s = "lambda.1se")
+print(ridge_coefs_1se)
+# Print the coefficients for the Ridge model at lambda.1se
+ridge_coefs_min <- coef(ridge_model, s = "lambda.min")
+print(ridge_coefs_min)
+
+                                     
 ridge_probabilities <- predict(ridge_model, newx = test_matrix, s = "lambda.min", type = "response")
 ridge_predictions <- predict(ridge_model, newx = test_matrix, s = "lambda.min", type = "class")
 ridge_predictions <- factor(ridge_predictions, levels = c(0, 1))
@@ -443,6 +456,19 @@ roc_ridge <- roc(test_label, ridge_probabilities)
 
 # Elastic net
 elastic_net_model <- cv.glmnet(x = train_matrix, y = train_label, family = "binomial", alpha = alpha, lambda = NULL)
+#png("/Users/rebeccahess/Documents/BSE Sem 1/datascience/elastic_graph.png", width = 800, height = 600) 
+plot(elastic_net_model)
+title("Elastic Net Coefficient Shrinkage Plot\n")
+dev.off()
+
+# Print the coefficients for the Ridge model at lambda.1se
+elastic_coefs_1se <- coef(elastic_net_model, s = "lambda.1se")
+print(elastic_coefs_1se)
+# Print the coefficients for the Ridge model at lambda.1se
+elastic_coefs_min <- coef(elastic_net_model, s = "lambda.min")
+print(elastic_coefs_min)
+
+                                     
 elastic_net_probabilities <- predict(elastic_net_model, newx = test_matrix, s = "lambda.min", type = "response")
 elastic_net_predictions <- predict(elastic_net_model, newx = test_matrix, s = "lambda.min", type = "class")
 elastic_net_predictions <- factor(elastic_net_predictions, levels = c(0, 1))
@@ -453,6 +479,16 @@ roc_elastic <- roc(test_label, as.vector(elastic_net_probabilities))
 
 # Lasso
 lasso_model <- cv.glmnet(x = train_matrix, y = train_label, family = "binomial", alpha = 1, lambda = NULL)
+#png("/Users/rebeccahess/Documents/BSE Sem 1/datascience/lasso_graph.png", width = 800, height = 600) 
+plot(lasso_model)
+title("Lasso Coefficient Shrinkage Plot\n")
+
+lasso_coefs_min <- coef(lasso_model, s = "lambda.min")
+print(lasso_coefs_min)
+lasso_coefs_1se <- coef(lasso_model, s = "lambda.1se")
+print(lasso_coefs_1se)
+
+                                     
 lasso_probabilities <- predict(lasso_model, newx = test_matrix, s = "lambda.min", type = "response")
 lasso_predictions <- predict(lasso_model, newx = test_matrix, s = "lambda.min", type = "class")
 lasso_predictions <- factor(lasso_predictions, levels = c(0, 1))
