@@ -29,6 +29,7 @@ data <- read.csv('https://raw.githubusercontent.com/jparedes-m/DataScienceBSE/re
         job == "skilled" ~ 2,
         job == "high qualif/self emp/mgmt" ~ 3,
         TRUE ~ NA)) %>% 
+      #Beware here we are creating missing values for saving_status
     mutate(savings_status = case_when(
         savings_status == "no known savings" ~ NA,
         savings_status == "<100" ~ "little",
@@ -37,7 +38,7 @@ data <- read.csv('https://raw.githubusercontent.com/jparedes-m/DataScienceBSE/re
         savings_status == ">=1000" ~ 'rich',
         TRUE ~ NA)) %>% 
     mutate(checking_status = case_when(
-        checking_status == 'no checking' ~ NA,
+        checking_status == 'no checking' ~ "no checking",
         checking_status == "<0" ~ 'little',
         checking_status == "0<=X<200" ~ 'moderate',
         checking_status == ">=200" ~ 'rich',
@@ -55,7 +56,7 @@ sapply(df, \(x) 100*mean(is.na(x)))
 mode_fctr <- function(x) levels(x)[which.max(tabulate(match(x, levels(x))))]
 
 df$savings_account <- ifelse(is.na(df$savings_account), mode_fctr(df$savings_account), df$savings_account)
-df$checking_account <- ifelse(is.na(df$checking_account), mode_fctr(df$checking_account), df$checking_account)
+#df$checking_account <- ifelse(is.na(df$checking_account), mode_fctr(df$checking_account), df$checking_account)
 
 ## Convert everything to numeric (most of them are factors)
 label_encoders <- list()
