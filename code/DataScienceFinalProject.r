@@ -505,13 +505,13 @@ ggplot(accuracy, aes(x = model, y = accuracy)) +
 #ggsave("Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/accuracy.png", width = 10, height = 10, bg = "white")
 
 # Plot all the roc curves with the AUC in the legend with the plot function
-plot(roc_knn, col = "red", lwd = 2, type = "l", main = "ROC Curves", xlab = "False Positive Rate", ylab = "True Positive Rate")
-lines(roc_rf, col = "blue", lwd = 2)
-lines(roc_xgb, col = "green", lwd = 2)
-lines(roc_ridge, col = "purple", lwd = 2)
-lines(roc_elastic, col = "orange", lwd = 2)
-lines(roc_lasso, col = "black", lwd = 2)
-lines(roc_logit, col = "brown", lwd = 2)
+plot(y=roc_knn$sensitivities, x=1-roc_knn$specificities, col = "red", lwd = 2, type = "l", main = "ROC Curves", xlab = "False Positive Rate", ylab = "True Positive Rate")
+lines(y=roc_rf$sensitivities, x=1-roc_rf$specificities, col = "blue", lwd = 2)
+lines(y=roc_xgb$sensitivities, x=1-roc_xgb$specificities, col = "green", lwd = 2)
+lines(y=roc_ridge$sensitivities, x=1-roc_ridge$specificities, col = "purple", lwd = 2)
+lines(y=roc_elastic$sensitivities, x=1-roc_elastic$specificities, col = "orange", lwd = 2)
+lines(y=roc_lasso$sensitivities, x=1-roc_lasso$specificities, col = "black", lwd = 2)
+lines(y=roc_logit$sensitivities, x=1-roc_logit$specificities, col = "brown", lwd = 2)
 legend("bottomright", 
        legend = c(
          paste0("K-Nearest-Neighbors (AUC = ", round(auc(roc_knn), 3), ")"),
