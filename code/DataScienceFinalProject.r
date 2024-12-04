@@ -15,6 +15,7 @@ library(randomForest)
 library(xgboost)
 library(glmnet)
 library(pROC)
+library(FNN)
 
 # [1] Data ----
 ## Reading, selecting variables, and making numerical some categorical variables.
@@ -29,7 +30,7 @@ data <- read.csv('https://raw.githubusercontent.com/jparedes-m/DataScienceBSE/re
         job == "skilled" ~ 2,
         job == "high qualif/self emp/mgmt" ~ 3,
         TRUE ~ NA)) %>% 
-      #Beware here we are creating missing values for saving_status
+      # Beware here we are creating missing values for saving_status
     mutate(savings_status = case_when(
         savings_status == "no known savings" ~ NA,
         savings_status == "<100" ~ "little",
@@ -43,9 +44,11 @@ data <- read.csv('https://raw.githubusercontent.com/jparedes-m/DataScienceBSE/re
         checking_status == "0<=X<200" ~ 'moderate',
         checking_status == ">=200" ~ 'rich',
         TRUE ~ NA)) %>% 
+    # Beware here we are creating missing values for property_magnitude
+    mutate(property_magnitude = ifelse(property_magnitude == "no known property", NA, property_magnitude)) %>%
     mutate(repayment_burden = credit_amount/duration) %>%
     rename(savings_account = savings_status, checking_account = checking_status) %>%
-    mutate(checking_account = as.factor(checking_account), savings_account = as.factor(savings_account)) %>% 
+    mutate(checking_account = as.factor(checking_account), savings_account = as.factor(savings_account), property_magnitude = as.factor(property_magnitude)) %>% 
     relocate(class)
 
 # [2] Missing values / Factors treatment ----
@@ -55,8 +58,9 @@ df <- data
 sapply(df, \(x) 100*mean(is.na(x)))
 mode_fctr <- function(x) levels(x)[which.max(tabulate(match(x, levels(x))))]
 
-df$savings_account <- ifelse(is.na(df$savings_account), mode_fctr(df$savings_account), df$savings_account)
-#df$checking_account <- ifelse(is.na(df$checking_account), mode_fctr(df$checking_account), df$checking_account)
+df <- mutate(df,
+            savings_account = ifelse(is.na(savings_account), mode_fctr(savings_account), savings_account),
+            property_magnitude = ifelse(is.na(property_magnitude), mode_fctr(property_magnitude), property_magnitude))
 
 ## Convert everything to numeric (most of them are factors)
 label_encoders <- list()
@@ -311,28 +315,34 @@ df <- df %>% mutate(across(all_of(num_vars), scale))
 ## [5.0] Train-test split ----
 train_index <- sample(1:nrow(df), 0.75 * nrow(df))
 X <- df %>% select(-class)
-y <- as.factor(df$class)
+y <- factor(df$class, levels = c(0,1), labels = c("good", "bad"))
 
 train_x <- X[train_index, ]
 train_y <- y[train_index]
+
 test_x <- X[-train_index, ]
 test_y <- y[-train_index]
 rm(train_index)
 
 ## [5.1] KNN ----
 train_data <- cbind(train_x, class = train_y)
-control <- trainControl(method = "cv", number = 7)
-knn_model <- train(class ~ ., data = train_data, method = "knn", tuneGrid = data.frame(k = 1:25), trControl = control)
+control <- trainControl(method = "cv", number = 7, classProbs = TRUE)
+knn_model <- train(class ~ ., data = train_data, method = "knn", tuneGrid = data.frame(k = 1:25), trControl = control, metric = 'ROC')
 
 best_k <- knn_model$bestTune$k
-knn_predictions <- knn(train = train_x, test = test_x, cl = train_y, k = best_k)
+# instead of hard classification we will use the class probabilities
+knn_predictions <- predict(knn_model, newdata = test_x, type = "raw")
 conf_matrix_knn <- confusionMatrix(knn_predictions, test_y)
 
-roc_knn <- roc(test_y, as.numeric(knn_predictions))
+knn_probabilities <- predict(knn_model, newdata = test_x, type = "prob")
+# we are interested in predicting the 'bad' class
+roc_knn <- roc(test_y, knn_probabilities[, "bad"])
+
 ## [5.2] Random Forest ----
 ntree_grid  <- 100*c(1:5)
 mtry_grid <- c(2, 3, floor(sqrt(ncol(train_data) -1)), 5)
 rf_results <- list()
+control <- trainControl(method = "cv", number = 7, classProbs = TRUE, summaryFunction = twoClassSummary)
 
 for(ntree in ntree_grid){
     rf_grid <- expand.grid(mtry = mtry_grid)
@@ -342,6 +352,7 @@ for(ntree in ntree_grid){
         method = "rf",
         trControl = control,
         tuneGrid = rf_grid, 
+        metric = 'ROC',
         ntree = ntree 
     )
     
@@ -367,8 +378,10 @@ rf_model <- randomForest(class ~ .,  data = train_data, ntree = best_result$ntre
 rf_predictions <- predict(rf_model, newdata = test_x)
 conf_matrix_rf <- confusionMatrix(rf_predictions, test_y)
 
+rf_probabilities <- predict(rf_model, newdata = test_x, type = "prob")
+
 # compute the ROC of this model
-roc_rf <- roc(as.numeric(as.character(test_y)), as.numeric(as.character(rf_predictions)))
+roc_rf <- roc(test_y, rf_probabilities[, "bad"])
 
 ## [5.3] XGBoost ----
 train_matrix <- model.matrix(class ~ ., data = train_data)[, -1]
@@ -376,23 +389,24 @@ test_matrix <- model.matrix(~ ., data = test_x)[, -1]
 train_label <- train_y
 test_label <- test_y
 
-xgb_control <- trainControl(method = "cv", number = 7, verboseIter = FALSE)
+xgb_control <- trainControl(method = "cv", number = 7, verboseIter = FALSE, classProbs = TRUE, summaryFunction = twoClassSummary)
 
-xgb_model <- train(x = train_matrix, y = train_label, method = "xgbTree", trControl = xgb_control, verbosity = 0,
+xgb_model <- train(x = train_matrix, y = train_label, method = "xgbTree", trControl = xgb_control, verbosity = 0, metric = 'ROC',
     tuneGrid = expand.grid(nrounds = seq(50, 200, by = 50), max_depth = c(3, 6), eta = c(0.1), gamma = c(0, 0.1), colsample_bytree = 0.8, min_child_weight = c(1,3), subsample = 0.8))
 
 xgb_predictions <- predict(xgb_model, newdata = test_matrix)
 conf_matrix_xgb <- confusionMatrix(xgb_predictions, test_label)
 
-# compute the ROC of this model
-roc_xgb <- roc(as.numeric(as.character(test_label)), as.numeric(as.character(xgb_predictions)))
+xgb_probabilities <- predict(xgb_model, newdata = test_matrix, type = "prob")
+
+roc_xgb <- roc(test_label, xgb_probabilities[, "bad"])
 
 ## [5.4] Elastic net with logit ----
 train_matrix <- model.matrix(class ~ ., data = train_data)[, -1]
 test_matrix <- model.matrix(~ ., data = test_x)[, -1]
 
-train_label <- as.numeric(as.character(train_y))
-test_label <- as.numeric(as.character(test_y))
+train_label <- as.numeric(train_y)-1
+test_label <- as.numeric(test_y)-1
 
 # Cross-validation to find the best alpha
 models <- list()
@@ -418,21 +432,33 @@ alpha <- results[1, "alpha"]
 
 # Ridge
 ridge_model <- cv.glmnet(x = train_matrix, y = train_label, family = "binomial", alpha = 0, lambda = NULL)
+ridge_probabilities <- predict(ridge_model, newx = test_matrix, s = "lambda.min", type = "response")
 ridge_predictions <- predict(ridge_model, newx = test_matrix, s = "lambda.min", type = "class")
-conf_matrix_ridge <- confusionMatrix(as.factor(ridge_predictions), as.factor(test_label))
-roc_ridge <- roc(as.numeric(as.character(test_label)), as.numeric(as.character(ridge_predictions)))
+ridge_predictions <- factor(ridge_predictions, levels = c(0, 1))
+test_label_factor <- factor(test_label, levels = c(0, 1))
+
+conf_matrix_ridge <- confusionMatrix(ridge_predictions, test_label_factor)
+
+roc_ridge <- roc(test_label, ridge_probabilities)
 
 # Elastic net
 elastic_net_model <- cv.glmnet(x = train_matrix, y = train_label, family = "binomial", alpha = alpha, lambda = NULL)
+elastic_net_probabilities <- predict(elastic_net_model, newx = test_matrix, s = "lambda.min", type = "response")
 elastic_net_predictions <- predict(elastic_net_model, newx = test_matrix, s = "lambda.min", type = "class")
-conf_matrix_elastic <- confusionMatrix(as.factor(elastic_net_predictions), as.factor(test_label))
-roc_elastic <- roc(as.numeric(as.character(test_label)), as.numeric(as.character(elastic_net_predictions)))
+elastic_net_predictions <- factor(elastic_net_predictions, levels = c(0, 1))
+test_label_factor <- factor(test_label, levels = c(0, 1))
+conf_matrix_elastic <- confusionMatrix(elastic_net_predictions, test_label_factor)
+
+roc_elastic <- roc(test_label, as.vector(elastic_net_probabilities))
 
 # Lasso
 lasso_model <- cv.glmnet(x = train_matrix, y = train_label, family = "binomial", alpha = 1, lambda = NULL)
+lasso_probabilities <- predict(lasso_model, newx = test_matrix, s = "lambda.min", type = "response")
 lasso_predictions <- predict(lasso_model, newx = test_matrix, s = "lambda.min", type = "class")
-conf_matrix_lasso <- confusionMatrix(as.factor(lasso_predictions), as.factor(test_label))
-roc_lasso <- roc(as.numeric(as.character(test_label)), as.numeric(as.character(lasso_predictions)))
+lasso_predictions <- factor(lasso_predictions, levels = c(0, 1))
+test_label_factor <- factor(test_label, levels = c(0, 1))
+conf_matrix_lasso <- confusionMatrix(lasso_predictions, test_label_factor)
+roc_lasso <- roc(test_label, as.vector(lasso_probabilities))
 
 # Logit without penalization
 logit_model <- glm(class ~ ., data = train_data, family = "binomial")
