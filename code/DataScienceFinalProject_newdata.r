@@ -19,7 +19,15 @@ library(pROC)
 # [1] Data ----
 ## Reading, selecting variables, and making numerical some categorical variables.
 
-data <- read.csv('https://raw.githubusercontent.com/jparedes-m/DataScienceBSE/refs/heads/main/data/credit.csv') %>% 
+data1 <- read.csv('https://raw.githubusercontent.com/jparedes-m/DataScienceBSE/refs/heads/main/data/german_credit_data.csv') %>% 
+    # just for this variable python didn't do the mappingg correctly
+    mutate(savings_status = case_when(
+        savings_status == "A61" ~ "<100",
+        savings_status == "A62" ~ "100<=X<500",
+        savings_status == "A63" ~ "500<=X<1000",
+        savings_status == "A64" ~ ">=1000",
+        savings_status == "A65" ~ "no known savings"
+    ))
     select(age, personal_status, job, housing, savings_status, checking_status, credit_amount, duration, purpose, credit_history, property_magnitude, housing, existing_credits, num_dependents, foreign_worker, installment_commitment, residence_since, class) %>% 
     separate(personal_status, into = c("sex", "p_status"), sep = " ") %>%
     mutate(class = ifelse(class == "good", 0, 1)) %>% 
