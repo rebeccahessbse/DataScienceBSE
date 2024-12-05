@@ -289,13 +289,27 @@ save_pheatmap <- function(x, filename, width=12, height=12){
 
 #save_pheatmap(map, "Aplicaciones/Overleaf/Foundations of Data Science - BSE Group/assets/figures/3_4_graph.png", width = 10, height = 10)
 # [4] Preprocessing ----
+## Outliers
+#repayment burden has 3 people about 1,000 which is unrepresentative/extremely above the Q3 of the sample
+df <- df[df$repayment_burden<1000,]
+#taking the log of age due to is right skew 
+df <- df %>% mutate(age=log(1+age))
+#taking the log of duration 
+df <- df %>% mutate(duration = log(1+duration))
+
+
 ## Feature engeenering
 ### Add: squared age, squared credit amount, squared duration, and squared number of dependents
-df <- df %>% mutate(age2 = age^2, credit_amount2 = credit_amount^2, duration2 = duration^2, num_dependents2 = num_dependents^2)
+#df <- df %>% mutate(age2 = age^2, credit_amount2 = credit_amount^2, duration2 = duration^2, num_dependents2 = num_dependents^2)
+df <- df %>% mutate(credit_amount2 = credit_amount^2, num_dependents2 = num_dependents^2, repayment_burden2 = repayment_burden^2)
 
-## Normalization across the numeric variables
-num_vars <- c('duration', 'credit_amount', 'installment_commitment', 'residence_since', 'age', 'existing_credits', 'num_dependents', 'age2', 'credit_amount2', 'duration2', 'num_dependents2')
+## Standardization across the numeric variables
+#num_vars <- c('duration', 'credit_amount', 'installment_commitment', 'residence_since', 'age', 'existing_credits', 'num_dependents', 'age2', 'credit_amount2', 'duration2', 'num_dependents2', 'repayment_burden')
+#removed age and age^2 -- don't need to normalize log 
+#source: chatgpt said scaling doesn't matter in tree models
+num_vars <- c('credit_amount', 'installment_commitment', 'residence_since', 'existing_credits', 'num_dependents', 'credit_amount2', 'num_dependents2', 'repayment_burden', 'repayment_burden2')
 df <- df %>% mutate(across(all_of(num_vars), scale))
+
 
 # [5] Models ----
 ## [5.0] Train-test split ----
