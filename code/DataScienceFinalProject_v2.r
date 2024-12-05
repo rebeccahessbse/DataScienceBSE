@@ -46,7 +46,6 @@ data <- read.csv('https://raw.githubusercontent.com/jparedes-m/DataScienceBSE/re
         TRUE ~ NA)) %>% 
     # Beware here we are creating missing values for property_magnitude
     mutate(property_magnitude = ifelse(property_magnitude == "no known property", NA, property_magnitude)) %>%
-    mutate(repayment_burden = credit_amount/duration) %>%
     rename(savings_account = savings_status, checking_account = checking_status) %>%
     mutate(checking_account = as.factor(checking_account), savings_account = as.factor(savings_account), property_magnitude = as.factor(property_magnitude)) %>% 
     relocate(class)
@@ -310,7 +309,7 @@ save_pheatmap <- function(x, filename, width=12, height=12){
 df <- df %>% mutate(age2 = age^2, credit_amount2 = credit_amount^2, duration2 = duration^2, num_dependents2 = num_dependents^2)
 
 ## Normalization across the numeric variables
-num_vars <- c('duration', 'credit_amount', 'installment_commitment', 'residence_since', 'age', 'existing_credits', 'num_dependents', 'age2', 'credit_amount2', 'duration2', 'num_dependents2', 'repayment_burden')
+num_vars <- c('duration', 'credit_amount', 'installment_commitment', 'residence_since', 'age', 'existing_credits', 'num_dependents', 'age2', 'credit_amount2', 'duration2', 'num_dependents2')
 df <- df %>% mutate(across(all_of(num_vars), scale))
 
 # [5] Models ----
