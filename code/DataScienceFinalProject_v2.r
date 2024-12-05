@@ -30,9 +30,8 @@ data <- read.csv('https://raw.githubusercontent.com/jparedes-m/DataScienceBSE/re
         job == "skilled" ~ 2,
         job == "high qualif/self emp/mgmt" ~ 3,
         TRUE ~ NA)) %>% 
-      # Beware here we are creating missing values for saving_status
     mutate(savings_status = case_when(
-        savings_status == "no known savings" ~ NA,
+        savings_status == "no known savings" ~ 'no known savings',
         savings_status == "<100" ~ "little",
         savings_status == "100<=X<500" ~ 'moderate',
         savings_status == "500<=X<1000" ~ 'quite rich',
@@ -44,8 +43,6 @@ data <- read.csv('https://raw.githubusercontent.com/jparedes-m/DataScienceBSE/re
         checking_status == "0<=X<200" ~ 'moderate',
         checking_status == ">=200" ~ 'rich',
         TRUE ~ NA)) %>% 
-    # Beware here we are creating missing values for property_magnitude
-    mutate(property_magnitude = ifelse(property_magnitude == "no known property", NA, property_magnitude)) %>%
     rename(savings_account = savings_status, checking_account = checking_status) %>%
     mutate(checking_account = as.factor(checking_account), savings_account = as.factor(savings_account), property_magnitude = as.factor(property_magnitude)) %>% 
     relocate(class)
