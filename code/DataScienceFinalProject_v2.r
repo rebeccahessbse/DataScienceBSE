@@ -53,16 +53,8 @@ df <- data
 ## Missing data treatment 
 sapply(df, \(x) 100*mean(is.na(x)))
 
+# dummy cols!!! here
 
-## Convert everything to numeric (most of them are factors)
-label_encoders <- list()
-factor_vars <- names(df)[sapply(df, function(x) is.factor(x) || is.character(x))]
-for (column in factor_vars) {
-  # Ensure the column is treated as a factor
-  df[[column]] <- as.numeric(fct_inorder(as.factor(df[[column]]))) - 1
-  label_encoders[[column]] <- levels(fct_inorder(as.factor(df[[column]])))
-}
-rm(column)
 # [3] Exploratory data analysis ----
 ## [3.1] Univariate analysis ----
 data_long <- data %>% select(sex, age, credit_amount, duration) %>%
