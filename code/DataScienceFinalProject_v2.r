@@ -52,11 +52,7 @@ df <- data
 
 ## Missing data treatment 
 sapply(df, \(x) 100*mean(is.na(x)))
-mode_fctr <- function(x) levels(x)[which.max(tabulate(match(x, levels(x))))]
 
-df <- mutate(df,
-            savings_account = ifelse(is.na(savings_account), mode_fctr(savings_account), savings_account),
-            property_magnitude = ifelse(is.na(property_magnitude), mode_fctr(property_magnitude), property_magnitude))
 
 ## Convert everything to numeric (most of them are factors)
 label_encoders <- list()
